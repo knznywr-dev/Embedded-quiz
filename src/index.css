@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply m-0 min-w-[320px] overflow-x-hidden bg-[#f6f8fc] font-sans text-ink-900 antialiased;
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-950;
+  }
+
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-ink-200/80 bg-white shadow-soft;
+  }
+
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800;
+  }
+
+  .btn-secondary {
+    @apply btn border border-ink-200 bg-white text-ink-800 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-ink-100 hover:text-ink-900;
+  }
+
+  .btn-danger {
+    @apply btn bg-rose-600 text-white shadow-sm hover:bg-rose-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.16em] text-brand-700;
+  }
+
+  .blank-input {
+    @apply w-full min-h-[48px] rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500;
+  }
+
+  .answer-blank {
+    @apply block min-h-[48px] w-full rounded-lg border border-dashed border-ink-300 bg-ink-50/60 px-3 py-2 text-sm italic text-ink-500;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .card {
+    box-shadow: none;
+  }
+}
