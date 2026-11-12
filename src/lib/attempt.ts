@@ -1,5 +1,5 @@
 import { questions } from '../data/questions'
-import type { ScoreSummary } from './scoring'
+import { scoreCombined, type CombinedScore } from './scoring'
 import { shuffle } from './shuffle'
 
 export interface ExamAttempt {
@@ -8,9 +8,10 @@ export interface ExamAttempt {
   startedAt: string
   submittedAt: string | null
   answers: Record<string, string>
+  identificationAnswers: Record<string, string>
   optionOrder: Record<string, string[]>
   currentIndex: number
-  score: ScoreSummary | null
+  score: CombinedScore | null
 }
 
 const ATTEMPT_KEY = 'embedded-reviewer:attempt:v1'
@@ -38,6 +39,7 @@ export function createAttempt(): ExamAttempt {
     startedAt: new Date().toISOString(),
     submittedAt: null,
     answers: {},
+    identificationAnswers: {},
     optionOrder,
     currentIndex: 0,
     score: null,
@@ -62,6 +64,17 @@ export function getQuestionOptions(
   return expected
 }
 
+function normalizeAttempt(attempt: ExamAttempt): ExamAttempt {
+  return {
+    ...attempt,
+    identificationAnswers:
+      attempt.identificationAnswers &&
+      typeof attempt.identificationAnswers === 'object'
+        ? attempt.identificationAnswers
+        : {},
+  }
+}
+
 function isAttempt(value: unknown): value is ExamAttempt {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<ExamAttempt>
@@ -77,13 +90,22 @@ function isAttempt(value: unknown): value is ExamAttempt {
   )
 }
 
+/** Returns a combined score, recomputing older saved attempts if needed. */
+export function getAttemptScore(attempt: ExamAttempt): CombinedScore {
+  const stored = attempt.score as CombinedScore | null
+  if (stored && stored.multipleChoice && stored.identification) {
+    return stored
+  }
+  return scoreCombined(attempt.answers, attempt.identificationAnswers)
+}
+
 export function loadAttempt(): ExamAttempt | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(ATTEMPT_KEY)
     if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
-    return isAttempt(parsed) ? parsed : null
+    return isAttempt(parsed) ? normalizeAttempt(parsed) : null
   } catch {
     return null
   }
@@ -113,6 +135,7 @@ export function loadHistory(): ExamAttempt[] {
     return parsed
       .filter(isAttempt)
       .filter((attempt) => attempt.submittedAt !== null && attempt.score)
+      .map(normalizeAttempt)
       .slice(0, HISTORY_LIMIT)
   } catch {
     return []

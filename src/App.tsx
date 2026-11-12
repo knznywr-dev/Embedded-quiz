@@ -15,7 +15,7 @@ import {
   saveHistory,
   type ExamAttempt,
 } from './lib/attempt'
-import { scoreMultipleChoice } from './lib/scoring'
+import { scoreCombined } from './lib/scoring'
 import type { View } from './types'
 
 export default function App() {
@@ -72,6 +72,19 @@ export default function App() {
     })
   }
 
+  function handleSelectIdentificationAnswer(itemId: number, answer: string) {
+    setAttempt((current) => {
+      if (!current || current.submittedAt) return current
+      return {
+        ...current,
+        identificationAnswers: {
+          ...current.identificationAnswers,
+          [String(itemId)]: answer,
+        },
+      }
+    })
+  }
+
   function handleSetCurrentIndex(index: number) {
     setAttempt((current) => {
       if (!current || current.submittedAt) return current
@@ -81,7 +94,10 @@ export default function App() {
 
   function handleSubmit() {
     if (!attempt || attempt.submittedAt) return
-    const score = scoreMultipleChoice(attempt.answers)
+    const score = scoreCombined(
+      attempt.answers,
+      attempt.identificationAnswers,
+    )
     const submitted: ExamAttempt = {
       ...attempt,
       submittedAt: new Date().toISOString(),
@@ -138,77 +154,82 @@ export default function App() {
       <AppHeader view={view} onNavigate={handleNavigate} />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-        {view === 'dashboard' && (
-          <Dashboard
-            attempt={attempt}
-            history={history}
-            onStartExam={openExam}
-            onNavigate={handleNavigate}
-            onViewResult={handleViewResult}
-            onRequestClearHistory={() => setShowClearDialog(true)}
-          />
-        )}
-
-        {view === 'exam' &&
-          (attempt && !attempt.submittedAt ? (
-            <Exam
+        <div key={view} className="animate-page-in">
+          {view === 'dashboard' && (
+            <Dashboard
               attempt={attempt}
-              onSelectAnswer={handleSelectAnswer}
-              onSetCurrentIndex={handleSetCurrentIndex}
-              onSubmit={handleSubmit}
-              onExit={() => setView('dashboard')}
+              history={history}
+              onStartExam={openExam}
+              onNavigate={handleNavigate}
+              onViewResult={handleViewResult}
+              onRequestClearHistory={() => setShowClearDialog(true)}
             />
-          ) : (
-            <div className="py-12">
-              <div className="card mx-auto max-w-lg p-8 text-center">
-                <h1 className="text-xl font-bold text-ink-900">
-                  No active examination
-                </h1>
-                <p className="mt-2 text-sm leading-6 text-ink-500">
-                  Start a new attempt to answer the 20 multiple-choice items.
-                </p>
-                <button
-                  type="button"
-                  onClick={openExam}
-                  className="btn-primary mt-6"
-                >
-                  Start Exam
-                </button>
+          )}
+
+          {view === 'exam' &&
+            (attempt && !attempt.submittedAt ? (
+              <Exam
+                attempt={attempt}
+                onSelectAnswer={handleSelectAnswer}
+                onSelectIdentificationAnswer={
+                  handleSelectIdentificationAnswer
+                }
+                onSetCurrentIndex={handleSetCurrentIndex}
+                onSubmit={handleSubmit}
+                onExit={() => setView('dashboard')}
+              />
+            ) : (
+              <div className="py-12">
+                <div className="card mx-auto max-w-lg p-8 text-center">
+                  <h1 className="text-xl font-bold text-ink-900">
+                    No active examination
+                  </h1>
+                  <p className="mt-2 text-sm leading-6 text-ink-500">
+                    Start a new attempt to answer the 30 examination items.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openExam}
+                    className="btn-primary mt-6"
+                  >
+                    Start Exam
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-        {view === 'study' && (
-          <Study
-            onNavigate={(target) => {
-              if (target === 'exam') {
-                openExam()
-              } else {
-                handleNavigate(target)
-              }
-            }}
-          />
-        )}
+          {view === 'study' && (
+            <Study
+              onNavigate={(target) => {
+                if (target === 'exam') {
+                  openExam()
+                } else {
+                  handleNavigate(target)
+                }
+              }}
+            />
+          )}
 
-        {view === 'identification' && (
-          <Identification
-            onNavigate={(target) => {
-              if (target === 'exam') {
-                openExam()
-              } else {
-                handleNavigate(target)
-              }
-            }}
-          />
-        )}
+          {view === 'identification' && (
+            <Identification
+              onNavigate={(target) => {
+                if (target === 'exam') {
+                  openExam()
+                } else {
+                  handleNavigate(target)
+                }
+              }}
+            />
+          )}
 
-        {view === 'results' && (
-          <Results
-            attempt={displayedResult}
-            onRetake={handleRetake}
-            onNavigate={handleNavigate}
-          />
-        )}
+          {view === 'results' && (
+            <Results
+              attempt={displayedResult}
+              onRetake={handleRetake}
+              onNavigate={handleNavigate}
+            />
+          )}
+        </div>
       </main>
 
       <AppFooter />

@@ -11,5 +11,8 @@ export default defineConfig(({ command }) => ({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    // The combined 30-item UI flows type/click through many screens, which
+    // exceeds Vitest's 5s default on slower machines.
+    testTimeout: 20000,
   },
 }))

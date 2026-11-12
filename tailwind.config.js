@@ -60,11 +60,56 @@ export default {
           '0%': { opacity: '0', transform: 'scale(0.97)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
+        'page-in': {
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'question-in': {
+          '0%': { opacity: '0', transform: 'translateX(22px) scale(0.995)' },
+          '100%': { opacity: '1', transform: 'translateX(0) scale(1)' },
+        },
+        pop: {
+          '0%': { transform: 'scale(0.55)' },
+          '60%': { transform: 'scale(1.18)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-14px)' },
+        },
+        drift: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '50%': { transform: 'translate(20px, -14px) scale(1.07)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-120%)' },
+          '100%': { transform: 'translateX(240%)' },
+        },
+        'confetti-fall': {
+          '0%': {
+            opacity: '0',
+            transform: 'translate3d(0, -20px, 0) rotate(0deg)',
+          },
+          '12%': { opacity: '1' },
+          '100%': {
+            opacity: '0',
+            transform:
+              'translate3d(var(--drift, 0px), 220px, 0) rotate(720deg)',
+          },
+        },
       },
       animation: {
-        'fade-up': 'fade-up 320ms ease-out both',
-        'fade-in': 'fade-in 200ms ease-out both',
-        'scale-in': 'scale-in 200ms ease-out both',
+        'fade-up': 'fade-up 360ms ease-out both',
+        'fade-in': 'fade-in 240ms ease-out both',
+        'scale-in': 'scale-in 240ms ease-out both',
+        'page-in': 'page-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'question-in':
+          'question-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        pop: 'pop 280ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        float: 'float 7s ease-in-out infinite',
+        'float-slow': 'float 11s ease-in-out infinite',
+        drift: 'drift 16s ease-in-out infinite',
+        shimmer: 'shimmer 2.2s ease-in-out infinite',
       },
     },
   },

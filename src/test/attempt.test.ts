@@ -21,6 +21,12 @@ describe('exam attempt option randomization', () => {
     }
   })
 
+  it('initializes identification answers in the same attempt', () => {
+    const attempt = createAttempt()
+    expect(attempt.identificationAnswers).toEqual({})
+    expect(attempt.score).toBeNull()
+  })
+
   it('varies the position of correct answers rather than fixing them at A', () => {
     const attempt = createAttempt()
     const correctPositions = new Set(

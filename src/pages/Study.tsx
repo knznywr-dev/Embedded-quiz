@@ -8,7 +8,10 @@ import {
   LayoutDashboard,
   Lightbulb,
 } from 'lucide-react'
-import { TOTAL_MCQ, questions } from '../data/questions'
+import { identificationItems, wordBank } from '../data/identification'
+import { questions } from '../data/questions'
+import { examSteps, TOTAL_EXAM } from '../lib/exam'
+import { ProgressBar } from '../components/ProgressBar'
 
 interface StudyProps {
   onNavigate: (view: 'dashboard' | 'exam' | 'identification') => void
@@ -16,8 +19,21 @@ interface StudyProps {
 
 export function Study({ onNavigate }: StudyProps) {
   const [index, setIndex] = useState(0)
-  const question = questions[index]
-  const progress = Math.round(((index + 1) / TOTAL_MCQ) * 100)
+  const step = examSteps[index]
+  const currentQuestion =
+    step.kind === 'multiple-choice' ? questions[step.index] : null
+  const currentItem =
+    step.kind === 'identification' ? identificationItems[step.index] : null
+  const prompt = currentQuestion?.question ?? currentItem?.description ?? ''
+  const correctAnswer =
+    currentQuestion?.answer ?? currentItem?.acceptedAnswers[0] ?? ''
+  const explanation =
+    currentQuestion?.explanation ?? currentItem?.explanation ?? ''
+  const sectionLabel =
+    step.kind === 'identification'
+      ? 'Section B • Identification'
+      : 'Section A • Multiple choice'
+  const progress = Math.round(((index + 1) / TOTAL_EXAM) * 100)
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -38,7 +54,7 @@ export function Study({ onNavigate }: StudyProps) {
       if (event.key === 'ArrowLeft') {
         setIndex((current) => Math.max(0, current - 1))
       } else if (event.key === 'ArrowRight') {
-        setIndex((current) => Math.min(TOTAL_MCQ - 1, current + 1))
+        setIndex((current) => Math.min(TOTAL_EXAM - 1, current + 1))
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -49,13 +65,14 @@ export function Study({ onNavigate }: StudyProps) {
     <div className="animate-fade-up pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow">Study Mode • All 20 questions</p>
+          <p className="eyebrow">Study Mode • All {TOTAL_EXAM} items</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">
             Review the Key Answers
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-500">
-            Browse every multiple-choice item with its correct answer and a
-            short explanation. Study Mode never changes your exam attempt.
+            Browse every multiple-choice and identification item with its
+            correct answer and a short explanation. Study Mode never changes
+            your exam attempt.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -83,31 +100,48 @@ export function Study({ onNavigate }: StudyProps) {
           <div className="border-b border-ink-100 px-5 py-4 sm:px-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-brand-50 text-sm font-extrabold text-brand-700">
-                  {question.id}
+                <span
+                  className={[
+                    'flex size-9 items-center justify-center rounded-lg text-sm font-extrabold',
+                    step.kind === 'identification'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-brand-50 text-brand-700',
+                  ].join(' ')}
+                >
+                  {step.id}
                 </span>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">
-                    Study card {index + 1} of {TOTAL_MCQ}
+                    Study card {index + 1} of {TOTAL_EXAM}
                   </p>
                   <p className="text-sm font-semibold text-ink-800">
-                    Item {question.id}
+                    {sectionLabel}
                   </p>
                 </div>
               </div>
-              <span className="badge bg-brand-50 text-brand-700">
+              <span
+                className={[
+                  'badge',
+                  step.kind === 'identification'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-brand-50 text-brand-700',
+                ].join(' ')}
+              >
                 <BookOpen size={13} aria-hidden="true" />
                 Study Mode
               </span>
             </div>
           </div>
 
-          <div className="px-5 py-6 sm:px-7 sm:py-7">
+          <div
+            key={step.id}
+            className="animate-question-in px-5 py-6 sm:px-7 sm:py-7"
+          >
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-500">
-              Question
+              {step.kind === 'identification' ? 'Description' : 'Question'}
             </p>
             <h2 className="mt-2 text-lg font-bold leading-8 tracking-tight text-ink-900 sm:text-xl">
-              {question.question}
+              {prompt}
             </h2>
 
             <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5">
@@ -116,7 +150,7 @@ export function Study({ onNavigate }: StudyProps) {
                 Correct answer
               </p>
               <p className="mt-2 text-base font-semibold leading-7 text-emerald-950">
-                {question.answer}
+                {correctAnswer}
               </p>
             </div>
 
@@ -126,9 +160,22 @@ export function Study({ onNavigate }: StudyProps) {
                 Explanation
               </p>
               <p className="mt-2 text-sm leading-6 text-ink-600">
-                {question.explanation}
+                {explanation}
               </p>
             </div>
+
+            {step.kind === 'identification' && (
+              <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                  Word Bank reference
+                </p>
+                <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-emerald-900">
+                  {wordBank.map((term) => (
+                    <span key={term}>{term}</span>
+                  ))}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col-reverse gap-2 border-t border-ink-100 bg-ink-50/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
@@ -147,9 +194,9 @@ export function Study({ onNavigate }: StudyProps) {
             <button
               type="button"
               onClick={() =>
-                setIndex((current) => Math.min(TOTAL_MCQ - 1, current + 1))
+                setIndex((current) => Math.min(TOTAL_EXAM - 1, current + 1))
               }
-              disabled={index === TOTAL_MCQ - 1}
+              disabled={index === TOTAL_EXAM - 1}
               className="btn-primary w-full sm:w-auto"
             >
               Next
@@ -162,23 +209,22 @@ export function Study({ onNavigate }: StudyProps) {
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold text-ink-900">Study progress</h2>
             <span className="text-xs font-semibold text-ink-500">
-              {index + 1}/{TOTAL_MCQ}
+              {index + 1}/{TOTAL_EXAM}
             </span>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink-100">
-            <div
-              className="h-full rounded-full bg-brand-600 transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <ProgressBar
+            value={progress}
+            label="Study progress"
+            className="mt-3"
+          />
           <p className="mt-2 text-[11px] text-ink-500">{progress}% reviewed</p>
 
           <div className="mt-5">
             <p className="text-xs font-semibold text-ink-700">
-              Jump to a question
+              Jump to an item
             </p>
-            <div className="mt-2.5 grid grid-cols-5 gap-1.5">
-              {questions.map((item, itemIndex) => {
+            <div className="mt-2.5 grid grid-cols-6 gap-1.5">
+              {examSteps.map((item, itemIndex) => {
                 const active = itemIndex === index
                 return (
                   <button
@@ -186,12 +232,14 @@ export function Study({ onNavigate }: StudyProps) {
                     type="button"
                     onClick={() => setIndex(itemIndex)}
                     aria-current={active ? 'step' : undefined}
-                    aria-label={`Study question ${item.id}`}
+                    aria-label={`Study item ${item.id}`}
                     className={[
-                      'flex aspect-square min-h-[40px] items-center justify-center rounded-lg border text-xs font-bold transition-all',
+                      'flex aspect-square min-h-[36px] items-center justify-center rounded-lg border text-[11px] font-bold transition-all duration-200',
                       active
-                        ? 'border-brand-600 bg-brand-600 text-white ring-2 ring-brand-300 ring-offset-2'
-                        : 'border-ink-200 bg-white text-ink-600 hover:border-brand-300 hover:bg-brand-50',
+                        ? item.kind === 'identification'
+                          ? 'border-emerald-600 bg-emerald-600 text-white ring-2 ring-emerald-300 ring-offset-2'
+                          : 'border-brand-600 bg-brand-600 text-white ring-2 ring-brand-300 ring-offset-2'
+                        : 'border-ink-200 bg-white text-ink-600 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50',
                     ].join(' ')}
                   >
                     {item.id}

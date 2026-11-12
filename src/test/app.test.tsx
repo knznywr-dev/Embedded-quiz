@@ -16,16 +16,20 @@ async function startExam() {
   const user = userEvent.setup()
   render(<App />)
   await user.click(screen.getAllByRole('button', { name: 'Start Exam' })[0])
-  await screen.findByRole('heading', { name: /Multiple Choice Examination/i })
+  await screen.findByRole('heading', { name: /Comprehensive Examination/i })
   return user
 }
 
 async function answerExam({
   correct,
   incorrect,
+  identificationCorrect = identificationItems.length,
+  identificationIncorrect = 0,
 }: {
   correct: number
   incorrect: number
+  identificationCorrect?: number
+  identificationIncorrect?: number
 }) {
   const user = await startExam()
 
@@ -40,6 +44,27 @@ async function answerExam({
     }
 
     if (index < questions.length - 1) {
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+    }
+  }
+
+  // Move from the last multiple-choice item into the identification section.
+  await user.click(screen.getByRole('button', { name: 'Next' }))
+
+  for (let index = 0; index < identificationItems.length; index += 1) {
+    const item = identificationItems[index]
+    const input = screen.getByRole('combobox')
+
+    if (index < identificationCorrect) {
+      await user.type(input, item.acceptedAnswers[0])
+    } else if (index < identificationCorrect + identificationIncorrect) {
+      const wrongTerm = wordBank.find(
+        (term) => term !== item.acceptedAnswers[0],
+      )!
+      await user.type(input, wrongTerm)
+    }
+
+    if (index < identificationItems.length - 1) {
       await user.click(screen.getByRole('button', { name: 'Next' }))
     }
   }
@@ -72,7 +97,7 @@ describe('dashboard and exam navigation', () => {
     })
     await user.click(startButtons[0])
     await screen.findByRole('heading', {
-      name: /Multiple Choice Examination/i,
+      name: /Comprehensive Examination/i,
     })
 
     const first = questions[0]
@@ -129,7 +154,7 @@ describe('dashboard and exam navigation', () => {
       screen.getAllByRole('button', { name: 'Start Exam' })[0],
     )
     await screen.findByRole('heading', {
-      name: /Multiple Choice Examination/i,
+      name: /Comprehensive Examination/i,
     })
     const first = questions[0]
     await user.click(screen.getByText(first.answer, { exact: true }))
@@ -153,45 +178,79 @@ describe('dashboard and exam navigation', () => {
       }),
     ).toHaveAttribute('aria-checked', 'true')
   })
+
+  it('keeps multiple-choice and identification answers in one saved attempt', async () => {
+    const user = await startExam()
+    const first = questions[0]
+    const item = identificationItems[0]
+
+    await user.click(screen.getByText(first.answer, { exact: true }))
+    await user.click(screen.getByRole('button', { name: /^Item 21,/ }))
+    expect(
+      screen.getByRole('heading', { name: item.description }),
+    ).toBeInTheDocument()
+
+    await user.type(screen.getByRole('combobox'), item.acceptedAnswers[0])
+
+    const saved = JSON.parse(window.localStorage.getItem(ATTEMPT_KEY) ?? '{}')
+    expect(saved.answers['1']).toBe(first.answer)
+    expect(saved.identificationAnswers['21']).toBe(item.acceptedAnswers[0])
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }))
+    expect(
+      screen.getByRole('heading', { name: questions[19].question }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByRole('combobox')).toHaveValue(item.acceptedAnswers[0])
+  })
 })
 
 describe('submission and scoring', () => {
-  it('TEST 1: displays 20/20 and 100% for 20 correct answers', async () => {
+  it('TEST 1: displays 30/30 and 100% when all 30 items are correct', async () => {
     await answerExam({ correct: 20, incorrect: 0 })
 
-    expect(screen.getByTestId('result-correct')).toHaveTextContent('20')
+    expect(screen.getByTestId('result-correct')).toHaveTextContent('30')
     expect(screen.getByTestId('result-incorrect')).toHaveTextContent('0')
     expect(screen.getByTestId('result-unanswered')).toHaveTextContent('0')
     expect(
       screen.getByRole('img', { name: /Final score: 100 percent/ }),
     ).toBeInTheDocument()
-    expect(screen.getByText('20 out of 20 correct')).toBeInTheDocument()
+    expect(screen.getByText('30 out of 30 correct')).toBeInTheDocument()
+    expect(screen.getByText('20/20 correct')).toBeInTheDocument()
+    expect(screen.getByText('10/10 correct')).toBeInTheDocument()
   })
 
-  it('TEST 2: displays 10/20 and 50% for 10 correct and 10 incorrect', async () => {
+  it('TEST 2: combines 10 correct MCQs with 10 correct identification items for 20/30 (67%)', async () => {
     await answerExam({ correct: 10, incorrect: 10 })
 
-    expect(screen.getByTestId('result-correct')).toHaveTextContent('10')
+    expect(screen.getByTestId('result-correct')).toHaveTextContent('20')
     expect(screen.getByTestId('result-incorrect')).toHaveTextContent('10')
     expect(screen.getByTestId('result-unanswered')).toHaveTextContent('0')
     expect(
-      screen.getByRole('img', { name: /Final score: 50 percent/ }),
+      screen.getByRole('img', { name: /Final score: 67 percent/ }),
     ).toBeInTheDocument()
+    expect(screen.getByText('20 out of 30 correct')).toBeInTheDocument()
   })
 
-  it('TEST 3: displays 15/20 and 75% for 15 correct, 3 incorrect, 2 unanswered', async () => {
-    await answerExam({ correct: 15, incorrect: 3 })
+  it('TEST 3: combines MCQ and identification results with unanswered items', async () => {
+    await answerExam({
+      correct: 15,
+      incorrect: 3,
+      identificationCorrect: 5,
+    })
 
-    expect(screen.getByTestId('result-correct')).toHaveTextContent('15')
+    expect(screen.getByTestId('result-correct')).toHaveTextContent('20')
     expect(screen.getByTestId('result-incorrect')).toHaveTextContent('3')
-    expect(screen.getByTestId('result-unanswered')).toHaveTextContent('2')
+    expect(screen.getByTestId('result-unanswered')).toHaveTextContent('7')
     expect(
-      screen.getByRole('img', { name: /Final score: 75 percent/ }),
+      screen.getByRole('img', { name: /Final score: 67 percent/ }),
     ).toBeInTheDocument()
-    expect(screen.getByText('15 out of 20 correct')).toBeInTheDocument()
+    expect(screen.getByText('20 out of 30 correct')).toBeInTheDocument()
+    expect(screen.getByText('15/20 correct')).toBeInTheDocument()
+    expect(screen.getByText('5/10 correct')).toBeInTheDocument()
   })
 
-  it('TEST 4: displays 0/20 and 0% when every item is unanswered', async () => {
+  it('TEST 4: displays 0/30 and 0% when every item is unanswered', async () => {
     const user = await startExam()
     await user.click(
       screen.getAllByRole('button', { name: 'Submit Exam' })[0],
@@ -204,7 +263,7 @@ describe('submission and scoring', () => {
 
     expect(screen.getByTestId('result-correct')).toHaveTextContent('0')
     expect(screen.getByTestId('result-incorrect')).toHaveTextContent('0')
-    expect(screen.getByTestId('result-unanswered')).toHaveTextContent('20')
+    expect(screen.getByTestId('result-unanswered')).toHaveTextContent('30')
     expect(
       screen.getByRole('img', { name: /Final score: 0 percent/ }),
     ).toBeInTheDocument()
@@ -226,7 +285,7 @@ describe('submission and scoring', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /Multiple Choice Examination/i }),
+      screen.getByRole('heading', { name: /Comprehensive Examination/i }),
     ).toBeInTheDocument()
 
     await user.click(
@@ -271,7 +330,7 @@ describe('results review and retake', () => {
       screen.getAllByRole('button', { name: 'Retake Exam' })[0],
     )
     await screen.findByRole('heading', {
-      name: /Multiple Choice Examination/i,
+      name: /Comprehensive Examination/i,
     })
 
     const checked = screen
@@ -283,7 +342,7 @@ describe('results review and retake', () => {
       window.localStorage.getItem(HISTORY_KEY) ?? '[]',
     )
     expect(savedHistory).toHaveLength(1)
-    expect(savedHistory[0].score.correct).toBe(15)
+    expect(savedHistory[0].score.correct).toBe(25)
   })
 
   it('clears saved results only after explicit confirmation', async () => {

@@ -64,9 +64,10 @@ export function Identification({ onNavigate }: IdentificationProps) {
             Identification with Word Bank
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-500">
-            Choose the correct term from the 10-term Word Bank for each of the
-            ten descriptions. Use each term only once. This section is scored
-            separately out of {identificationItemCount}.
+            Practice the ten identification items with the 10-term Word Bank.
+            Use each term only once. This optional practice is scored out of{' '}
+            {identificationItemCount}; the official combined exam also includes
+            these items in its 30-item result.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -81,10 +82,18 @@ export function Identification({ onNavigate }: IdentificationProps) {
           <button
             type="button"
             onClick={() => onNavigate('study')}
-            className="btn-primary"
+            className="btn-secondary"
           >
             <BookOpen size={17} aria-hidden="true" />
-            Study MCQs
+            Study Items
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('exam')}
+            className="btn-primary"
+          >
+            <ClipboardCheck size={17} aria-hidden="true" />
+            Take Combined Exam
           </button>
         </div>
       </div>
@@ -133,7 +142,7 @@ export function Identification({ onNavigate }: IdentificationProps) {
             </div>
             <p className="mt-1.5 max-w-3xl text-sm leading-6 text-ink-700">
               {isIdentificationConfigured
-                ? `All ten descriptions and verified answer keys are ready. Answer below, then check your score out of ${identificationItemCount}. This score is separate from the 20 multiple-choice items.`
+                ? `All ten descriptions and verified answer keys are ready. Answer below, then check your practice score out of ${identificationItemCount}.`
                 : 'Add a description and verified answer for every identification item to enable scoring. The section remains excluded from the multiple-choice result until it is complete.'}
             </p>
             <p className="mt-2 text-xs leading-5 text-ink-600">
@@ -361,8 +370,8 @@ export function Identification({ onNavigate }: IdentificationProps) {
                 {score.unanswered} unanswered
               </p>
               <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-5 text-brand-800">
-                This section is scored separately from the 20 multiple-choice
-                items.
+                This is optional Word Bank practice. Your official combined
+                exam score includes these items in Items 1–30.
               </p>
             </div>
           )}

@@ -45,6 +45,31 @@ export interface IdentificationScore {
   review: IdentificationReviewItem[]
 }
 
+export type CombinedReviewKind = 'multiple-choice' | 'identification'
+
+export interface CombinedReviewItem {
+  kind: CombinedReviewKind
+  questionId: number
+  /** MCQ wording or identification description. */
+  prompt: string
+  selectedAnswer: string | null
+  correctAnswer: string
+  explanation?: string
+  status: AnswerStatus
+}
+
+export interface CombinedScore {
+  total: number
+  answered: number
+  correct: number
+  incorrect: number
+  unanswered: number
+  percentage: number
+  multipleChoice: ScoreSummary
+  identification: IdentificationScore
+  review: CombinedReviewItem[]
+}
+
 export function normalizeAnswer(value: string): string {
   return value
     .trim()
@@ -146,6 +171,69 @@ export function scoreIdentification(
     unanswered,
     percentage: total === 0 ? 0 : Math.round((correct / total) * 100),
     review,
+  }
+}
+
+/**
+ * Scores the complete examination: the 20 multiple-choice items followed by the
+ * 10 identification items. Always returns a combined summary for Items 1–30.
+ */
+export function scoreCombined(
+  multipleChoiceAnswers: Record<string, string | undefined>,
+  identificationAnswers: Record<string, string | undefined>,
+): CombinedScore {
+  const multipleChoice = scoreMultipleChoice(multipleChoiceAnswers)
+  const identification =
+    scoreIdentification(identificationAnswers) ?? emptyIdentificationScore()
+
+  const review: CombinedReviewItem[] = [
+    ...multipleChoice.review.map((item) => ({
+      kind: 'multiple-choice' as const,
+      questionId: item.questionId,
+      prompt: item.question,
+      selectedAnswer: item.selectedAnswer,
+      correctAnswer: item.correctAnswer,
+      explanation: item.explanation,
+      status: item.status,
+    })),
+    ...identification.review.map((item) => ({
+      kind: 'identification' as const,
+      questionId: item.questionId,
+      prompt: item.description,
+      selectedAnswer: item.selectedAnswer,
+      correctAnswer: item.correctAnswer,
+      explanation: item.explanation,
+      status: item.status,
+    })),
+  ]
+
+  const correct = multipleChoice.correct + identification.correct
+  const incorrect = multipleChoice.incorrect + identification.incorrect
+  const unanswered = multipleChoice.unanswered + identification.unanswered
+  const total = multipleChoice.total + identification.total
+
+  return {
+    total,
+    answered: correct + incorrect,
+    correct,
+    incorrect,
+    unanswered,
+    percentage: total === 0 ? 0 : Math.round((correct / total) * 100),
+    multipleChoice,
+    identification,
+    review,
+  }
+}
+
+function emptyIdentificationScore(): IdentificationScore {
+  return {
+    total: 0,
+    answered: 0,
+    correct: 0,
+    incorrect: 0,
+    unanswered: 0,
+    percentage: 0,
+    review: [],
   }
 }
 

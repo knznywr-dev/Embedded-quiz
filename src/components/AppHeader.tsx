@@ -38,10 +38,10 @@ export function AppHeader({ view, onNavigate }: AppHeaderProps) {
         <button
           type="button"
           onClick={() => onNavigate('dashboard')}
-          className="flex min-w-0 items-center gap-2.5 rounded-xl py-1 text-left"
+          className="group flex min-w-0 items-center gap-2.5 rounded-xl py-1 text-left"
           aria-label="Embedded Systems Exam Reviewer — go to dashboard"
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-transform duration-500 group-hover:rotate-6 group-hover:scale-105">
             <Cpu size={21} strokeWidth={2.2} aria-hidden="true" />
           </span>
           <span className="hidden min-w-0 md:block">
@@ -65,9 +65,9 @@ export function AppHeader({ view, onNavigate }: AppHeaderProps) {
                 aria-current={active ? 'page' : undefined}
                 aria-label={label}
                 className={[
-                  'inline-flex min-h-[42px] items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors sm:px-3.5',
+                  'inline-flex min-h-[42px] items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 sm:px-3.5',
                   active
-                    ? 'bg-brand-50 text-brand-700'
+                    ? 'bg-brand-50 text-brand-700 shadow-sm'
                     : 'text-ink-500 hover:bg-ink-100 hover:text-ink-900',
                 ].join(' ')}
               >

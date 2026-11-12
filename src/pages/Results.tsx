@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,14 +7,15 @@ import {
   CircleMinus,
   ClipboardCheck,
   LayoutDashboard,
+  LibraryBig,
   RotateCcw,
   Target,
   XCircle,
 } from 'lucide-react'
-import { isIdentificationConfigured, identificationItemCount } from '../data/identification'
 import type { ExamAttempt } from '../lib/attempt'
+import { getAttemptScore } from '../lib/attempt'
 import type { AnswerStatus } from '../lib/scoring'
-import { getPerformance, scoreMultipleChoice } from '../lib/scoring'
+import { getPerformance } from '../lib/scoring'
 import { formatDate } from '../lib/format'
 import { ScoreRing } from '../components/ScoreRing'
 import type { View } from '../types'
@@ -51,6 +52,44 @@ const statusConfig: Record<
   },
 }
 
+const confettiColors = [
+  '#2563eb',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#06b6d4',
+]
+
+function ConfettiBurst() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      {Array.from({ length: 28 }).map((_, index) => {
+        const left = (index * 37) % 100
+        const delay = (index % 10) * 70
+        const drift = (index % 2 === 0 ? 1 : -1) * ((index % 5) + 1) * 12
+        return (
+          <span
+            key={index}
+            className="confetti-piece"
+            style={
+              {
+                left: `${left}%`,
+                backgroundColor: confettiColors[index % confettiColors.length],
+                animationDelay: `${delay}ms`,
+                '--drift': `${drift}px`,
+              } as CSSProperties
+            }
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
   const [filter, setFilter] = useState<ReviewFilter>('all')
   const reviewRef = useRef<HTMLElement>(null)
@@ -66,8 +105,8 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
             No submitted attempt yet
           </h1>
           <p className="mt-2 text-sm leading-6 text-ink-500">
-            Start the examination and submit your answers to see your results
-            and answer review here.
+            Start the examination and submit your answers to see your combined
+            results and answer review here.
           </p>
           <button
             type="button"
@@ -82,7 +121,7 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
     )
   }
 
-  const score = attempt.score ?? scoreMultipleChoice(attempt.answers)
+  const score = getAttemptScore(attempt)
   const performance = getPerformance(score.percentage)
   const wrongCount = score.incorrect + score.unanswered
   const visibleReview =
@@ -111,8 +150,9 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
   return (
     <div className="animate-fade-up space-y-6 pb-12">
       {/* Summary */}
-      <section className="overflow-hidden rounded-3xl border border-ink-200/80 bg-white shadow-soft">
-        <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-center lg:p-10">
+      <section className="relative overflow-hidden rounded-3xl border border-ink-200/80 bg-white shadow-soft">
+        {score.percentage >= 75 && <ConfettiBurst />}
+        <div className="relative grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-center lg:p-10">
           <div>
             <span className="badge border border-emerald-100 bg-emerald-50 text-emerald-700">
               <CheckCircle2 size={14} aria-hidden="true" />
@@ -133,7 +173,7 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
                 {performance.label}
               </span>
               <span className="text-sm text-ink-500">
-                Multiple-choice score:{' '}
+                Combined score:{' '}
                 <strong className="font-semibold text-ink-800">
                   {score.correct}/{score.total}
                 </strong>
@@ -178,6 +218,27 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
                 </p>
               </div>
             </div>
+
+            <div className="mt-3 grid gap-2 sm:max-w-md sm:grid-cols-2">
+              <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-3.5 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700/80">
+                  Section A • Multiple choice
+                </p>
+                <p className="mt-0.5 text-sm font-extrabold text-brand-800">
+                  {score.multipleChoice.correct}/
+                  {score.multipleChoice.total} correct
+                </p>
+              </div>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3.5 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/80">
+                  Section B • Identification
+                </p>
+                <p className="mt-0.5 text-sm font-extrabold text-emerald-800">
+                  {score.identification.correct}/
+                  {score.identification.total} correct
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-200/80 bg-ink-50/60 p-5">
@@ -191,12 +252,12 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
               {score.correct} out of {score.total} correct
             </p>
             <p className="mt-1 text-xs text-ink-500">
-              {score.percentage}% final percentage
+              {score.percentage}% combined percentage
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-ink-100 bg-ink-50/40 px-6 py-4 sm:flex-row sm:flex-wrap sm:px-8">
+        <div className="relative flex flex-col gap-2 border-t border-ink-100 bg-ink-50/40 px-6 py-4 sm:flex-row sm:flex-wrap sm:px-8">
           <button type="button" onClick={onRetake} className="btn-primary">
             <RotateCcw size={17} aria-hidden="true" />
             Retake Exam
@@ -209,9 +270,9 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
           >
             <XCircle size={17} aria-hidden="true" />
             Review Incorrect Answers
-            {score.incorrect > 0 && (
+            {wrongCount > 0 && (
               <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-rose-700">
-                {score.incorrect}
+                {wrongCount}
               </span>
             )}
           </button>
@@ -225,6 +286,14 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
           </button>
           <button
             type="button"
+            onClick={() => onNavigate('identification')}
+            className="btn-secondary"
+          >
+            <LibraryBig size={17} aria-hidden="true" />
+            Word Bank Practice
+          </button>
+          <button
+            type="button"
             onClick={() => onNavigate('dashboard')}
             className="btn-ghost sm:ml-auto"
           >
@@ -232,33 +301,6 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
             Return to Dashboard
           </button>
         </div>
-      </section>
-
-      {/* Identification status */}
-      <section className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-            <ClipboardCheck size={20} aria-hidden="true" />
-          </span>
-          <div>
-            <h2 className="text-sm font-bold text-ink-900">
-              Identification with Word Bank — Items 21–{20 + identificationItemCount}
-            </h2>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-ink-500">
-              {isIdentificationConfigured
-                ? `The 10-item identification section is configured and scored separately out of ${identificationItemCount}. Open it to answer and check your score.`
-                : 'The identification section is not configured, so it is not included in this multiple-choice result.'}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => onNavigate('identification')}
-          className="btn-secondary shrink-0 self-start sm:self-auto"
-        >
-          Open Identification
-          <ArrowRight size={16} aria-hidden="true" />
-        </button>
       </section>
 
       {/* Review */}
@@ -270,7 +312,7 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
             </h2>
             <p className="mt-1 text-sm text-ink-500">
               Your selected answer, the correct answer, and a short explanation
-              for each item.
+              for every multiple-choice and identification item.
             </p>
           </div>
           <div className="flex items-center gap-1 rounded-xl border border-ink-200 bg-white p-1">
@@ -319,7 +361,7 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
               No incorrect or unanswered items
             </p>
             <p className="mt-1 text-sm text-ink-500">
-              Every multiple-choice item was answered correctly.
+              Every examination item was answered correctly.
             </p>
             <button
               type="button"
@@ -331,13 +373,14 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
           </div>
         ) : (
           <ol className="mt-4 space-y-3">
-            {visibleReview.map((item) => {
+            {visibleReview.map((item, index) => {
               const config = statusConfig[item.status]
               const Icon = config.icon
               return (
                 <li
-                  key={item.questionId}
-                  className={`card overflow-hidden border-l-4 ${config.ring}`}
+                  key={`${item.kind}-${item.questionId}`}
+                  className={`card animate-fade-up overflow-hidden border-l-4 ${config.ring}`}
+                  style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}
                 >
                   <div className="p-5 sm:p-6">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -348,6 +391,18 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
                         <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
                           Item {item.questionId}
                         </span>
+                        <span
+                          className={[
+                            'badge',
+                            item.kind === 'identification'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-brand-50 text-brand-700',
+                          ].join(' ')}
+                        >
+                          {item.kind === 'identification'
+                            ? 'Identification'
+                            : 'Multiple choice'}
+                        </span>
                       </span>
                       <span className={`badge ${config.badge}`}>
                         <Icon size={13} aria-hidden="true" />
@@ -356,7 +411,7 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
                     </div>
 
                     <h3 className="mt-3 text-sm font-bold leading-6 text-ink-900 sm:text-[15px]">
-                      {item.question}
+                      {item.prompt}
                     </h3>
 
                     <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
@@ -394,14 +449,16 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
                       </div>
                     </div>
 
-                    <div className="mt-3 rounded-xl border border-ink-100 bg-ink-50/60 px-3.5 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink-500">
-                        Why
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-ink-600">
-                        {item.explanation}
-                      </p>
-                    </div>
+                    {item.explanation && (
+                      <div className="mt-3 rounded-xl border border-ink-100 bg-ink-50/60 px-3.5 py-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-500">
+                          Why
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-ink-600">
+                          {item.explanation}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </li>
               )
@@ -415,8 +472,8 @@ export function Results({ attempt, onRetake, onNavigate }: ResultsProps) {
         <div>
           <h2 className="text-sm font-bold text-ink-900">Want another attempt?</h2>
           <p className="mt-1 text-xs leading-5 text-ink-500">
-            Retaking starts a fresh attempt and keeps this result in your saved
-            history.
+            Retaking starts a fresh 30-item attempt and keeps this result in
+            your saved history.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">

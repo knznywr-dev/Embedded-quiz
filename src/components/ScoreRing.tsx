@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 interface ScoreRingProps {
   percentage: number
   size?: number
@@ -47,9 +49,15 @@ export function ScoreRing({
           stroke="currentColor"
           strokeWidth={stroke}
           strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className={`${toneClasses[tone]} transition-[stroke-dashoffset] duration-700 ease-out`}
+          style={
+            {
+              strokeDasharray: circumference,
+              strokeDashoffset: offset,
+              '--ring-circumference': circumference,
+              '--ring-offset': offset,
+            } as CSSProperties
+          }
+          className={`${toneClasses[tone]} ring-progress transition-[stroke-dashoffset] duration-700 ease-out`}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">

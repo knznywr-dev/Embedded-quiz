@@ -16,9 +16,16 @@ import {
 import { identificationItemCount, wordBank } from '../data/identification'
 import { TOTAL_MCQ } from '../data/questions'
 import type { ExamAttempt } from '../lib/attempt'
+import { getAttemptScore } from '../lib/attempt'
+import {
+  countAnswered,
+  countAnsweredByIdentity,
+  TOTAL_EXAM,
+} from '../lib/exam'
 import { formatDate } from '../lib/format'
 import type { View } from '../types'
 import { ScoreRing } from '../components/ScoreRing'
+import { ProgressBar } from '../components/ProgressBar'
 
 interface DashboardProps {
   attempt: ExamAttempt | null
@@ -38,28 +45,28 @@ interface StatCard {
 
 const stats: StatCard[] = [
   {
+    label: 'Combined exam items',
+    value: TOTAL_EXAM,
+    note: 'Items 1–30 • one attempt',
+    icon: ListChecks,
+  },
+  {
     label: 'Multiple-choice items',
     value: TOTAL_MCQ,
-    note: 'Items 1–20 • auto-scored',
+    note: 'Section A • Items 1–20',
     icon: ClipboardCheck,
   },
   {
     label: 'Identification items',
     value: identificationItemCount,
-    note: 'Items 21–30 • auto-scored',
+    note: 'Section B • Items 21–30',
     icon: PenLine,
   },
   {
     label: 'Word Bank terms',
     value: wordBank.length,
-    note: 'Two-column reference',
+    note: 'Use each exactly once',
     icon: LibraryBig,
-  },
-  {
-    label: 'Total exam items',
-    value: TOTAL_MCQ + identificationItemCount,
-    note: 'Complete examination set',
-    icon: ListChecks,
   },
 ]
 
@@ -74,11 +81,16 @@ export function Dashboard({
   const activeAttempt = attempt && !attempt.submittedAt ? attempt : null
   const latestResult = history[0] ?? (attempt?.submittedAt ? attempt : null)
   const answeredCount = activeAttempt
-    ? Object.values(activeAttempt.answers).filter((answer) => answer.trim())
-        .length
+    ? countAnswered(activeAttempt.answers, activeAttempt.identificationAnswers)
     : 0
-  const progressPercentage = Math.round((answeredCount / TOTAL_MCQ) * 100)
-  const latestScore = latestResult?.score ?? null
+  const sectionCounts = activeAttempt
+    ? countAnsweredByIdentity(
+        activeAttempt.answers,
+        activeAttempt.identificationAnswers,
+      )
+    : { multipleChoice: 0, identification: 0 }
+  const progressPercentage = Math.round((answeredCount / TOTAL_EXAM) * 100)
+  const latestScore = latestResult ? getAttemptScore(latestResult) : null
   const displayPercentage = latestScore
     ? latestScore.percentage
     : progressPercentage
@@ -93,11 +105,11 @@ export function Dashboard({
       <section className="relative overflow-hidden rounded-3xl border border-ink-200/80 bg-white p-6 shadow-soft sm:p-9 lg:p-10">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-32 size-[420px] rounded-full bg-gradient-to-br from-brand-100 via-brand-50 to-transparent opacity-90 blur-2xl"
+          className="pointer-events-none absolute -right-24 -top-32 size-[420px] animate-float-slow rounded-full bg-gradient-to-br from-brand-100 via-brand-50 to-transparent opacity-90 blur-2xl"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-28 left-1/3 size-72 rounded-full bg-indigo-50 opacity-80 blur-2xl"
+          className="pointer-events-none absolute -bottom-28 left-1/3 size-72 animate-drift rounded-full bg-indigo-50 opacity-80 blur-2xl"
         />
 
         <div className="relative grid items-center gap-8 lg:grid-cols-[1.5fr_0.85fr] lg:gap-12">
@@ -111,9 +123,9 @@ export function Dashboard({
               <span className="mt-1 block text-brand-600">EXAM REVIEWER</span>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-ink-600">
-              Welcome! Practice the multiple-choice examination one question at
-              a time, check your answers instantly, and track your progress.
-              When you are ready, review the key ideas in Study Mode.
+              Practice the complete 30-item examination in one sitting: 20
+              multiple-choice questions followed by 10 identification items. Get
+              one combined score, review every answer, and track your progress.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -201,21 +213,19 @@ export function Dashboard({
               <div className="flex items-center justify-between text-sm">
                 <span className="text-ink-600">Answered</span>
                 <span className="font-semibold text-ink-900">
-                  {answeredCount} / {TOTAL_MCQ}
+                  {answeredCount} / {TOTAL_EXAM}
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-ink-200">
-                <div
-                  className="h-full rounded-full bg-brand-600 transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                />
-              </div>
+              <ProgressBar
+                value={progressPercentage}
+                label="Saved exam progress"
+              />
               <p className="text-xs leading-5 text-ink-500">
                 {latestScore
                   ? `Most recent score: ${latestScore.correct}/${latestScore.total} (${latestScore.percentage}%)`
                   : activeAttempt
-                    ? 'Continue where you left off. Every answer is saved.'
-                    : 'Start the exam when you are ready. You can change answers before submitting.'}
+                    ? 'Continue where you left off. Every multiple-choice and identification answer is saved.'
+                    : 'Start the 30-item exam when you are ready. You can change answers before submitting.'}
               </p>
             </div>
           </div>
@@ -224,14 +234,14 @@ export function Dashboard({
 
       {/* Stats */}
       <section aria-label="Reviewer at a glance">
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {stats.map(({ label, value, note, icon: Icon }) => (
-            <div key={label} className="card p-4 sm:p-5">
+            <div key={label} className="card hover-lift group p-4 sm:p-5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-2xl font-extrabold tracking-tight text-ink-900">
                   {value}
                 </span>
-                <span className="flex size-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 transition-transform duration-300 group-hover:scale-110">
                   <Icon size={18} aria-hidden="true" />
                 </span>
               </div>
@@ -254,12 +264,12 @@ export function Dashboard({
             Examination sections
           </h2>
           <p className="mt-1 text-sm text-ink-500">
-            Two sections make up the complete reviewer.
+            Two sections, one combined attempt and one final score.
           </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <article className="card flex flex-col p-5 sm:p-6">
+        <div className="stagger grid gap-4 lg:grid-cols-2">
+          <article className="card hover-lift flex flex-col p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
@@ -278,24 +288,26 @@ export function Dashboard({
             </div>
 
             <p className="mt-4 text-sm leading-6 text-ink-600">
-              Items 1–20. One question at a time with four choices, instant
-              feedback after submission, and automatic scoring out of 20.
+              Items 1–20 of the combined exam. One question at a time with four
+              choices, and automatic scoring as part of your final 30-item
+              result.
             </p>
 
             {activeAttempt && (
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs font-medium text-ink-500">
-                  <span>Saved progress</span>
+                  <span>Multiple-choice progress</span>
                   <span>
-                    {answeredCount}/{TOTAL_MCQ} answered
+                    {sectionCounts.multipleChoice}/{TOTAL_MCQ} answered
                   </span>
                 </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-100">
-                  <div
-                    className="h-full rounded-full bg-brand-500 transition-all duration-500"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
+                <ProgressBar
+                  value={(sectionCounts.multipleChoice / TOTAL_MCQ) * 100}
+                  size="sm"
+                  barClassName="bg-brand-500"
+                  label="Multiple-choice progress"
+                  className="mt-1.5"
+                />
               </div>
             )}
 
@@ -323,7 +335,7 @@ export function Dashboard({
             </div>
           </article>
 
-          <article className="card flex flex-col p-5 sm:p-6">
+          <article className="card hover-lift flex flex-col p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -337,30 +349,64 @@ export function Dashboard({
                 </div>
               </div>
               <span className="badge bg-emerald-50 text-emerald-700">
-                Scoreable out of {identificationItemCount}
+                Included in the exam • {identificationItemCount} items
               </span>
             </div>
 
             <p className="mt-4 text-sm leading-6 text-ink-600">
-              Items 21–30. Ten descriptions cover all 10 Word Bank terms, with
-              a verified answer key for each. Use every term exactly once.
+              Items 21–30 of the same attempt. Ten descriptions cover all 10
+              Word Bank terms, with a verified answer key for each. Use every
+              term exactly once.
             </p>
 
             <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3.5 py-3 text-xs leading-5 text-emerald-800">
-              Answer the ten items, then check your score out of{' '}
-              {identificationItemCount}. This score is separate from the 20
-              multiple-choice items.
+              The Word Bank appears beside each identification item in the exam.
+              These 10 items count toward your single combined score out of{' '}
+              {TOTAL_EXAM}.
             </div>
 
-            <div className="mt-auto pt-5">
+            {activeAttempt && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs font-medium text-ink-500">
+                  <span>Identification progress</span>
+                  <span>
+                    {sectionCounts.identification}/{identificationItemCount}{' '}
+                    answered
+                  </span>
+                </div>
+                <ProgressBar
+                  value={
+                    (sectionCounts.identification / identificationItemCount) *
+                    100
+                  }
+                  size="sm"
+                  barClassName="bg-emerald-500"
+                  label="Identification progress"
+                  className="mt-1.5"
+                />
+              </div>
+            )}
+
+            <div className="mt-auto flex flex-col gap-2 pt-5 sm:flex-row">
+              <button
+                type="button"
+                onClick={onStartExam}
+                className="btn-primary flex-1"
+              >
+                {activeAttempt ? (
+                  <Play size={17} aria-hidden="true" />
+                ) : (
+                  <ClipboardCheck size={17} aria-hidden="true" />
+                )}
+                {primaryLabel}
+              </button>
               <button
                 type="button"
                 onClick={() => onNavigate('identification')}
-                className="btn-secondary w-full sm:w-auto"
+                className="btn-secondary flex-1"
               >
                 <LibraryBig size={17} aria-hidden="true" />
-                Open Identification
-                <ArrowRight size={16} aria-hidden="true" />
+                Practice Word Bank
               </button>
             </div>
           </article>
@@ -447,7 +493,8 @@ export function Dashboard({
                 className="mt-0.5 shrink-0 text-emerald-600"
                 aria-hidden="true"
               />
-              Answer all 20 multiple-choice items, then submit once.
+              Answer all 30 items — 20 multiple choice and 10 identification —
+              then submit once.
             </li>
             <li className="flex gap-2.5">
               <CheckCircle2
@@ -463,6 +510,15 @@ export function Dashboard({
                 className="mt-0.5 shrink-0 text-emerald-600"
                 aria-hidden="true"
               />
+              The Word Bank is available beside Items 21–30. Use each term
+              exactly once.
+            </li>
+            <li className="flex gap-2.5">
+              <CheckCircle2
+                size={17}
+                className="mt-0.5 shrink-0 text-emerald-600"
+                aria-hidden="true"
+              />
               Unanswered items are counted separately, never as correct.
             </li>
             <li className="flex gap-2.5">
@@ -471,8 +527,7 @@ export function Dashboard({
                 className="mt-0.5 shrink-0 text-emerald-600"
                 aria-hidden="true"
               />
-              Complete the 10 identification items and check your score
-              separately.
+              Your submission produces one combined score out of 30.
             </li>
             <li className="flex gap-2.5">
               <CheckCircle2

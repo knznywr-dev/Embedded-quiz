@@ -4,6 +4,7 @@ import { identificationItems, wordBank } from '../data/identification'
 import {
   getPerformance,
   normalizeAnswer,
+  scoreCombined,
   scoreIdentification,
   scoreMultipleChoice,
 } from '../lib/scoring'
@@ -141,6 +142,65 @@ describe('identification scoring', () => {
     expect(result.incorrect).toBe(0)
     expect(result.unanswered).toBe(10)
     expect(result.percentage).toBe(0)
+  })
+})
+
+describe('combined exam scoring', () => {
+  function allMcqCorrect(): Record<string, string> {
+    return Object.fromEntries(
+      questions.map((question) => [String(question.id), question.answer]),
+    )
+  }
+
+  function allIdentificationCorrect(): Record<string, string> {
+    return Object.fromEntries(
+      identificationItems.map((item) => [
+        String(item.id),
+        item.acceptedAnswers[0],
+      ]),
+    )
+  }
+
+  it('scores all 30 items as 30/30 (100%)', () => {
+    const result = scoreCombined(
+      allMcqCorrect(),
+      allIdentificationCorrect(),
+    )
+    expect(result.total).toBe(30)
+    expect(result.correct).toBe(30)
+    expect(result.incorrect).toBe(0)
+    expect(result.unanswered).toBe(0)
+    expect(result.percentage).toBe(100)
+    expect(result.multipleChoice.correct).toBe(20)
+    expect(result.identification.correct).toBe(10)
+    expect(result.review).toHaveLength(30)
+    expect(result.review[0].kind).toBe('multiple-choice')
+    expect(result.review[20].kind).toBe('identification')
+  })
+
+  it('combines section results and keeps unanswered items separate', () => {
+    const mcq = allMcqCorrect()
+    delete mcq['20']
+    const identification = allIdentificationCorrect()
+    delete identification['30']
+    identification['29'] = wordBank.find(
+      (term) => term !== identificationItems[8].acceptedAnswers[0],
+    )!
+
+    const result = scoreCombined(mcq, identification)
+    expect(result.correct).toBe(27)
+    expect(result.incorrect).toBe(1)
+    expect(result.unanswered).toBe(2)
+    expect(result.percentage).toBe(90)
+    expect(result.multipleChoice.correct).toBe(19)
+    expect(result.identification.correct).toBe(8)
+  })
+
+  it('does not count unanswered identification items as correct', () => {
+    const result = scoreCombined(allMcqCorrect(), {})
+    expect(result.correct).toBe(20)
+    expect(result.unanswered).toBe(10)
+    expect(result.percentage).toBe(67)
   })
 })
 
