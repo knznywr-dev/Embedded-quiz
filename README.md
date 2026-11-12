@@ -2,6 +2,12 @@
 
 A complete, student-friendly exam reviewer for Embedded Systems. It is a working React + TypeScript application with a light dashboard-style interface, automatic scoring, answer review, study mode, progress saving, and responsive layouts.
 
+## Live demo
+
+**https://knznywr-dev.github.io/Embedded-quiz/**
+
+The site is built and deployed automatically by GitHub Actions on every push to `main` (see `.github/workflows/deploy.yml`).
+
 ## Quick start
 
 Requirements: Node.js 20 or newer and npm.
@@ -11,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite (normally `http://localhost:5173`).
+Open the local URL printed by Vite (normally `http://localhost:5173`). Production builds target the GitHub Pages subpath `/Embedded-quiz/`.
 
 To create and preview a production build:
 
